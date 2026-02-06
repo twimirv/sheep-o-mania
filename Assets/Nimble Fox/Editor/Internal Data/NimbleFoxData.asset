@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1299223954, guid: 68c3e8224dc71c4f2afa82fdcca0feae, type: 3}
+  m_Name: NimbleFoxData
+  m_EditorClassIdentifier: NimbleFox.dll::d.dD
+  qr: 
+  qS:
+    qV: []
+    qv: []
+    qW:
+      rd: []
+    qw: 
+    qX: 
+    qx: 
+    qY: []
+    qy:
+      Re: 
+      RF: 
+      Rf: -1
+      RG: -1
+      Rg: 0
+    qZ:
+      RL: 0
+      Rl: 0
+      RM: 100
+      Rm: 1
+    qz:
+      RC: 
+      Rc: 1
+      RD: 1
+      Rd: 0
+      RE: 0
+    RA:
+      RH:
+        LG:
+          rd: []
+  qs: []
+  qT:
+    Cf:
+      rd: []
+  references:
+    version: 2
+    RefIds: []
