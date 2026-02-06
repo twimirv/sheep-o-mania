@@ -1,0 +1,19 @@
+Name: Follower_0
+Position: (-0.99, 0.00, -4.66)
+Rotation: (0.00, 0.00, 0.00)
+LocalScale: (1.00, 1.00, 1.00)
+COMPONENTS:
+- Transform
+- CharacterController
+  Center: (0.00, 0.00, 0.00)
+  Height: 2
+  Radius: 0.5
+- FollowerSheepController
+CHILDREN:
+- Sheep_A
+  LocalPos: (0.00, 0.00, 0.00)
+  LocalRot: (0.00, 90.00, 0.00)
+  LocalScale: (3.00, 3.00, 3.00)
+    - Transform
+    - MeshFilter
+    - MeshRenderer
