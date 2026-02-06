@@ -18,10 +18,7 @@ public class SceneSetupHelper : Editor
         if (oldFollowers) DestroyImmediate(oldFollowers);
         
         GameObject oldCam = GameObject.FindGameObjectsWithTag("MainCamera").Length > 0 ? GameObject.FindGameObjectsWithTag("MainCamera")[0].gameObject : null;
-        // Don't necessarily destroy camera if it exists, just reuse or let logic handle it? 
-        // Logic below finds Camera.main. If we want a fresh start, maybe destroy it too?
-        // Let's keep camera if it exists to avoid annoying scene view resets, but the script below logic handles "if null".
-        
+
         // 1. Create Ground Plane
         GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
         ground.name = "Ground";
@@ -62,6 +59,7 @@ public class SceneSetupHelper : Editor
         }
 
         AlphaSheepController alphaCtrl = alphaSheep.AddComponent<AlphaSheepController>();
+        alphaSheep.AddComponent<SheepWiggle>(); // [NEW] Add Wiggle
         alphaSheep.transform.position = new Vector3(0, 0, 0);
 
         // Adjust Character Controller for a 3x Sheep
@@ -70,7 +68,6 @@ public class SceneSetupHelper : Editor
         cc.radius = 0.9f;
 
         // Visuals for Alpha (Black Sheep)
-        // Using Sheep_A as requested ("They need the mesh, sheep_A")
         string sheepModelPath = "Assets/Nimble Fox/Generated Content/Models/Sheep_A/Sheep_A.fbx";
         GameObject sheepPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(sheepModelPath);
         
@@ -117,6 +114,7 @@ public class SceneSetupHelper : Editor
             follower.transform.position = new Vector3(rx, 0, rz);
 
             FollowerSheepController followCtrl = follower.AddComponent<FollowerSheepController>();
+            follower.AddComponent<SheepWiggle>(); // [NEW] Add Wiggle
             CharacterController spawnCC = follower.AddComponent<CharacterController>();
             spawnCC.center = new Vector3(0, 1.2f, 0);
             spawnCC.height = 2.4f;
