@@ -28,6 +28,20 @@ public class CameraFollow : MonoBehaviour
 
     private void Start()
     {
+        // Auto-find target if not assigned
+        if (target == null)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+            {
+                target = player.transform;
+            }
+            else
+            {
+                Debug.LogWarning("CameraFollow: No target assigned and no object with tag 'Player' found!");
+            }
+        }
+
         // Don't overwrite currentZoom with offset.magnitude
         // This ensures the camera starts at the configured currentZoom distance
     }
