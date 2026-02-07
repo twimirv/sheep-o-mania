@@ -19,15 +19,19 @@ public class SheepSpawner : MonoBehaviour
     public int maxHerdSize = 10; 
 
     [Tooltip("Number of free sheep to spawn at start")]
-    public int initialFreeSheepCount = 20;
+    public int initialFreeSheepCount = 50;
 
     [Tooltip("Time in seconds between spawning random herd sheep")]
-    public float randomSpawnInterval = 1.0f; // Reduced from 5.0f
+    public float randomSpawnInterval = 0.5f; // Decreased from 1.0f
     
     [Tooltip("Maximum distance from the player to spawn sheep")]
     public float maxSpawnDistance = 100f;
+    [Tooltip("Minimum distance from the player to spawn sheep")]
+    public float minSpawnDistance = 10f; 
 
     [Header("Terrain Settings")]
+    [Tooltip("LayerMask for Ground detection (if Terrain is activeTerrain is null)")]
+    public LayerMask groundLayer = 1; // Default to Default layer
     public Terrain terrain;
     public float spawnHeightOffset = 1.0f; 
 
@@ -40,10 +44,10 @@ public class SheepSpawner : MonoBehaviour
             terrain = Terrain.activeTerrain;
         }
 
+        // We no longer return early if terrain is null, we will try Raycast spawning later.
         if (terrain == null)
         {
-            Debug.LogError("SheepSpawner: No valid Terrain found!");
-            return;
+            // Debug.Log("SheepSpawner: No active Terrain found. Will attempt Raycast spawning on Ground Layer.");
         }
 
         // Find Player
@@ -59,18 +63,59 @@ public class SheepSpawner : MonoBehaviour
              if (tagPlayer != null) _playerTransform = tagPlayer.transform;
         }
 
-        SpawnEnemies();
-        SpawnInitialFreeSheep(); // Spawn initial batch
+        // Reordered: Spawn free sheep first, then enemies.
+        // This ensures free sheep appear even if enemy spawning crashes.
+        try
+        {
+            SpawnInitialFreeSheep(); // Spawn initial batch
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"SheepSpawner: Failed to SpawnInitialFreeSheep: {e}");
+        }
+
+        try
+        {
+            SpawnEnemies();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"SheepSpawner: Failed to SpawnEnemies: {e}");
+        }
+
         StartCoroutine(SpawnRandomSheepRoutine());
     }
 
     private void SpawnInitialFreeSheep()
     {
-        if (herdSheepPrefab == null) return;
-        
-        for (int i = 0; i < initialFreeSheepCount; i++)
+        if (herdSheepPrefab == null) 
         {
-            SpawnRandomSheep();
+            Debug.LogError("SheepSpawner: Herd Prefab is Missing in Initial Spawn!");
+            return;
+        }
+
+        Debug.Log($"SheepSpawner: Attempting to spawn {initialFreeSheepCount} free sheep...");
+        
+        int spawned = 0;
+        int attempts = 0;
+        int maxAttempts = initialFreeSheepCount * 3; // Prevent infinite loop
+
+        while (spawned < initialFreeSheepCount && attempts < maxAttempts)
+        {
+            attempts++;
+            if (SpawnRandomSheep())
+            {
+                spawned++;
+            }
+        }
+        
+        if (spawned < initialFreeSheepCount)
+        {
+             Debug.LogWarning($"SheepSpawner: Only spawned {spawned}/{initialFreeSheepCount} free sheep after {attempts} attempts. Check ground size/layers.");
+        }
+        else
+        {
+             Debug.Log($"SheepSpawner: Successfully spawned {spawned} free sheep.");
         }
     }
 
@@ -81,23 +126,32 @@ public class SheepSpawner : MonoBehaviour
             Debug.LogWarning("SheepSpawner: Enemy Prefab is not assigned.");
             return;
         }
+        
+        Debug.Log($"SheepSpawner: Attempting to spawn {enemyCount} enemies...");
 
         for (int i = 0; i < enemyCount; i++)
         {
-            Vector3 spawnPos = GetRandomPositionOnTerrain();
-            // If we couldn't find a spot (e.g. no player), skip or stick to zero
-            if (spawnPos == Vector3.zero && _playerTransform == null) continue;
-
-            GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
-            
-            enemyObj.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-
-            EnemyAlphaSheepController enemyController = enemyObj.GetComponent<EnemyAlphaSheepController>();
-            
-            if (enemyController != null && herdSheepPrefab != null)
+            try
             {
-                int herdSize = Random.Range(minHerdSize, maxHerdSize + 1);
-                SpawnEnemyHerd(enemyController, herdSize);
+                Vector3 spawnPos = GetRandomPositionOnTerrain();
+                // If we couldn't find a spot (e.g. no player), skip or stick to zero
+                if (spawnPos == Vector3.zero && _playerTransform == null) continue;
+
+                GameObject enemyObj = Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+                
+                enemyObj.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+
+                EnemyAlphaSheepController enemyController = enemyObj.GetComponent<EnemyAlphaSheepController>();
+                
+                if (enemyController != null && herdSheepPrefab != null)
+                {
+                    int herdSize = Random.Range(minHerdSize, maxHerdSize + 1);
+                    SpawnEnemyHerd(enemyController, herdSize);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"SheepSpawner: Error spawning enemy {i}: {e}");
             }
         }
     }
@@ -111,7 +165,7 @@ public class SheepSpawner : MonoBehaviour
             Vector3 offset = new Vector3(randomCircle.x, 0, randomCircle.y);
             Vector3 followerPos = leader.transform.position + offset;
             
-            followerPos.y = terrain.SampleHeight(followerPos) + terrain.GetPosition().y + spawnHeightOffset;
+            followerPos.y = GetGroundHeight(followerPos) + spawnHeightOffset;
 
             GameObject sheepObj = Instantiate(herdSheepPrefab, followerPos, Quaternion.identity);
             
@@ -140,53 +194,90 @@ public class SheepSpawner : MonoBehaviour
         }
     }
 
-    private void SpawnRandomSheep()
+    private bool SpawnRandomSheep()
     {
         Vector3 spawnPos = GetRandomPositionOnTerrain();
         if (spawnPos != Vector3.zero)
         {
             GameObject sheepObj = Instantiate(herdSheepPrefab, spawnPos, Quaternion.identity);
             sheepObj.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
+            return true;
+        }
+        else
+        {
+            Debug.LogWarning("SheepSpawner: Could not spawn random sheep (no valid position found). Check Raycast/Ground settings.");
+            return false;
         }
     }
 
     private Vector3 GetRandomPositionOnTerrain()
     {
-        if (terrain == null) return Vector3.zero;
-
-        // Origin for spawning
-        Vector3 origin = Vector3.zero;
-        
+        // Origin for spawning: Prioritize Player, then Spawner itself
+        Vector3 origin = transform.position;
         if (_playerTransform != null)
         {
             origin = _playerTransform.position;
         }
-        else
+
+        // Random point within min/max distance
+        // Get random direction
+        Vector2 randomCircle = Random.insideUnitCircle.normalized;
+        float distance = Random.Range(minSpawnDistance, maxSpawnDistance);
+        
+        Vector3 randomPos = origin + new Vector3(randomCircle.x * distance, 0, randomCircle.y * distance);
+
+        // Clamp to Terrain Bounds IF we are using Terrain
+        if (terrain != null)
         {
-            // Fallback to center of terrain if no player found (or logic to find player again)
-            TerrainData td = terrain.terrainData;
-            origin = terrain.GetPosition() + new Vector3(td.size.x * 0.5f, 0, td.size.z * 0.5f);
+            TerrainData terrainData = terrain.terrainData;
+            Vector3 terrainPos = terrain.GetPosition();
+
+            float minX = terrainPos.x;
+            float maxX = terrainPos.x + terrainData.size.x;
+            float minZ = terrainPos.z;
+            float maxZ = terrainPos.z + terrainData.size.z;
+
+            randomPos.x = Mathf.Clamp(randomPos.x, minX, maxX);
+            randomPos.z = Mathf.Clamp(randomPos.z, minZ, maxZ);
         }
 
-        // Random point within distance
-        Vector2 randomCircle = Random.insideUnitCircle * maxSpawnDistance;
-        Vector3 randomPos = origin + new Vector3(randomCircle.x, 0, randomCircle.y);
-
-        // Clamp to Terrain Bounds
-        TerrainData terrainData = terrain.terrainData;
-        Vector3 terrainPos = terrain.GetPosition();
-
-        float minX = terrainPos.x;
-        float maxX = terrainPos.x + terrainData.size.x;
-        float minZ = terrainPos.z;
-        float maxZ = terrainPos.z + terrainData.size.z;
-
-        randomPos.x = Mathf.Clamp(randomPos.x, minX, maxX);
-        randomPos.z = Mathf.Clamp(randomPos.z, minZ, maxZ);
-
         // Sample Height
-        float worldY = terrain.SampleHeight(randomPos) + terrainPos.y;
+        float worldY = GetGroundHeight(randomPos); 
+        // If GetGroundHeight returns float.MinValue, it means no ground found.
+        if (worldY == float.MinValue) 
+        {
+            // Debug.LogWarning($"SheepSpawner: Could not find ground at {randomPos.x}, {randomPos.z}");
+            return Vector3.zero;
+        }
 
-        return new Vector3(randomPos.x, worldY + spawnHeightOffset, randomPos.z);
+        Vector3 finalPos = new Vector3(randomPos.x, worldY + spawnHeightOffset, randomPos.z);
+        // Debug.Log($"Found valid spawn position: {finalPos}");
+        return finalPos;
+    }
+
+    private float GetGroundHeight(Vector3 pos)
+    {
+        // 1. Try Terrain
+        if (terrain != null)
+        {
+            return terrain.SampleHeight(pos) + terrain.GetPosition().y;
+        }
+
+        // 2. Try Raycast
+        // Cast from high up down to find ground
+        RaycastHit hit;
+        
+        // Debug.Log($"Raycasting from {pos.x}, 500, {pos.z} against {groundLayer.value}");
+        
+        if (Physics.Raycast(new Vector3(pos.x, 500f, pos.z), Vector3.down, out hit, 1000f, groundLayer))
+        {
+            // Debug.Log($"Raycast Hit: {hit.collider.name} at {hit.point}");
+            return hit.point.y;
+        }
+        
+        Debug.LogWarning($"SheepSpawner: Raycast failed to find ground at ({pos.x}, {pos.z}). Ensure your Ground has a Collider and is on a layer included in the 'Ground Layer' mask.");
+        
+        // No ground found
+        return float.MinValue;
     }
 }

@@ -339,11 +339,30 @@ public class FollowerSheepController : MonoBehaviour
         while (traversedDistance < HerdManager.Instance.dashDistance)
         {
             float step = HerdManager.Instance.dashSpeed * Time.deltaTime;
-            _characterController.Move(direction * step);
+
+            // default to horizontal
+            Vector3 moveDir = direction;
+
+            // Raycast down to align with terrain
+            // Start slightly up to avoid starting in ground, cast down distinct distance
+            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 2.0f))
+            {
+                // Project our horizontal dash direction onto the ground plane
+                moveDir = Vector3.ProjectOnPlane(direction, hit.normal).normalized;
+            }
+
+            _characterController.Move(moveDir * step);
+            
+            // Apply extra gravity snap to keep them grounded during dash causing them not to fly off slopes
+            if (!_characterController.isGrounded)
+            {
+                _characterController.Move(Vector3.down * 10f * Time.deltaTime);
+            }
+
             traversedDistance += step;
             
             // Rotate towards dash direction
-            Quaternion targetRot = Quaternion.LookRotation(direction);
+            Quaternion targetRot = Quaternion.LookRotation(moveDir);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, HerdManager.Instance.rotationSpeed * Time.deltaTime);
             
             yield return null;

@@ -97,7 +97,7 @@ public class SceneSetupHelper : Editor
         }
 
         // 3. Spawn Followers
-        int followerCount = 12; // At least 10
+        int followerCount = 50; // Increased from 12
         Material whiteMat = new Material(Shader.Find("Standard"));
         whiteMat.color = Color.white;
 

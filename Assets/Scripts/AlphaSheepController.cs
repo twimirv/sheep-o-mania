@@ -33,8 +33,29 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
     [Tooltip("Multiplier for movement speed when shield is active (0.2 = 80% reduction)")]
     public float shieldSpeedMultiplier = 0.2f;
 
+    [Header("Speed Boost Settings")]
+    [Tooltip("Speed multiplier during boost")]
+    public float speedBoostMultiplier = 3.0f; // 300%
+    [Tooltip("Duration of the speed boost in seconds")]
+    public float speedBoostDuration = 3.0f; 
+    [Tooltip("Particle System to play during speed boost")]
+    public ParticleSystem runningFlames;
+
     // Herd Logic
-    public float LastJumpTime { get; private set; } = -100f;
+    public float LastJumpTime { get; private set; } = -100f; // Kept for interface compatibility
+    
+    private bool _isBoosting = false;
+
+    private System.Collections.IEnumerator SpeedBoostRoutine()
+    {
+        _isBoosting = true;
+        if (runningFlames != null) runningFlames.Play();
+        
+        yield return new WaitForSeconds(speedBoostDuration);
+        
+        if (runningFlames != null) runningFlames.Stop();
+        _isBoosting = false;
+    }
     
     private CharacterController _characterController;
     private PlayerInput _playerInput;
@@ -71,6 +92,13 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         _quickTurnAction = _playerInput.actions["Attack"]; 
         // Dash remains on Crouch (now Y / Q)
         _dashAction = _playerInput.actions["Crouch"];
+        
+        // Ensure particles stay in world space
+        if (runningFlames != null)
+        {
+            var main = runningFlames.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+        }
     }
 
     private void Update()
@@ -145,6 +173,13 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
 
         // Constant movement: Target speed is always finalMoveSpeed, ignoring input magnitude
         float targetSpeed = finalMoveSpeed;
+        
+        // Apply Speed Boost
+        if (_isBoosting)
+        {
+            targetSpeed *= speedBoostMultiplier;
+        }
+
         _currentSpeed = Mathf.SmoothDamp(_currentSpeed, targetSpeed, ref _speedSmoothVelocity, speedSmoothTime);
 
         if (move.magnitude >= 0.1f)
@@ -166,10 +201,10 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
             _velocity.y = -2f;
         }
 
-        if (_characterController.isGrounded && _jumpAction.triggered)
+        // Jump replaced with Speed Boost
+        if (_jumpAction.triggered && !_isBoosting)
         {
-            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * -gravity);
-            LastJumpTime = Time.time;
+            StartCoroutine(SpeedBoostRoutine());
         }
 
         _velocity.y -= gravity * Time.deltaTime;
