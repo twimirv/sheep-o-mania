@@ -74,6 +74,7 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
     private float _currentSpeed;
     
     private int _followerCount = 0;
+    public int FollowerCount => _followerCount;
 
     private void Awake()
     {
@@ -103,6 +104,12 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
 
     private void Update()
     {
+        // Concussion Effect (Visual Only, movement allowed)
+        if (_isConcussed)
+        {
+            HandleConcussion();
+        }
+
         if (_canMove)
         {
             HandleMovement();
@@ -236,4 +243,73 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
     }
 
     private bool _isShieldActive = false;
+    
+    // --- Concussion Logic ---
+    [Header("Concussion Settings")]
+    public float concussionDuration = 2.0f;
+    public ParticleSystem concussionParticles;
+    public float blinkInterval = 0.2f;
+
+    private bool _isConcussed = false;
+    private float _concussionRecoveryTime;
+    private float _nextBlinkTime;
+    private bool _blinkState;
+    private Renderer _renderer;
+
+    private void HandleConcussion()
+    {
+        if (Time.time > _concussionRecoveryTime)
+        {
+            EndConcussion();
+            return;
+        }
+
+        // Blinking Effect
+        if (Time.time > _nextBlinkTime)
+        {
+            _blinkState = !_blinkState;
+            if (_renderer == null) _renderer = GetComponentInChildren<Renderer>();
+            
+            if (_renderer != null)
+            {
+                _renderer.enabled = _blinkState; 
+            }
+            _nextBlinkTime = Time.time + blinkInterval;
+        }
+    }
+
+    private void EndConcussion()
+    {
+        _isConcussed = false;
+        if (_renderer != null) _renderer.enabled = true;
+        if (concussionParticles != null) concussionParticles.Stop();
+    }
+
+    public System.Collections.Generic.List<FollowerSheepController> Concuss()
+    {
+        if (_isConcussed) return new System.Collections.Generic.List<FollowerSheepController>();
+
+        _isConcussed = true;
+        _concussionRecoveryTime = Time.time + concussionDuration;
+        
+        if (concussionParticles != null) concussionParticles.Play();
+        
+        // Blink Immediately
+        _blinkState = false;
+        _nextBlinkTime = Time.time + blinkInterval;
+        if (_renderer == null) _renderer = GetComponentInChildren<Renderer>();
+        if (_renderer != null) _renderer.enabled = false;
+
+        // Drop 50% of Herd
+        int dropCount = Mathf.FloorToInt(_followerCount * 0.5f);
+        if (dropCount > 0 && HerdManager.Instance != null)
+        {
+            // _followerCount will be decremented as they are removed in HerdManager -> Unregister
+            // Wait, HerdManager.DropFollowers calls LeaveLeader which calls UnregisterFollower on US.
+            // So our local _followerCount will update automatically.
+            return HerdManager.Instance.DropFollowers(dropCount);
+        }
+
+        return new System.Collections.Generic.List<FollowerSheepController>();
+    }
 }

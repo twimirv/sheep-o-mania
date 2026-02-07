@@ -442,11 +442,6 @@ MonoBehaviour:
   enableIsometric: 1
   pitch: 36
   yaw: 0
---- !u!198 &1200955093 stripped
-ParticleSystem:
-  m_CorrespondingSourceObject: {fileID: 2947430565804427513, guid: d7d721d07e0e8c645b78a72c0ce36de0, type: 3}
-  m_PrefabInstance: {fileID: 911407508458763003}
-  m_PrefabAsset: {fileID: 0}
 --- !u!21 &1314175020
 Material:
   serializedVersion: 8
@@ -1010,22 +1005,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: EnemySheep
       objectReference: {fileID: 0}
-    - target: {fileID: 6353129973469220234, guid: d7d721d07e0e8c645b78a72c0ce36de0, type: 3}
-      propertyPath: dashSpeed
-      value: 10
-      objectReference: {fileID: 0}
-    - target: {fileID: 6353129973469220234, guid: d7d721d07e0e8c645b78a72c0ce36de0, type: 3}
-      propertyPath: dashDuration
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6353129973469220234, guid: d7d721d07e0e8c645b78a72c0ce36de0, type: 3}
-      propertyPath: dashAttackDistance
-      value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 6353129973469220234, guid: d7d721d07e0e8c645b78a72c0ce36de0, type: 3}
-      propertyPath: concussionParticles
-      value: 
-      objectReference: {fileID: 1200955093}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

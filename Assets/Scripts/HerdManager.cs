@@ -66,6 +66,26 @@ public class HerdManager : MonoBehaviour
         }
     }
 
+    public System.Collections.Generic.List<FollowerSheepController> DropFollowers(int count)
+    {
+        var dropped = new System.Collections.Generic.List<FollowerSheepController>();
+        int currentCount = _followers.Count;
+        int toDrop = Mathf.Min(count, currentCount);
+
+        for (int i = 0; i < toDrop; i++)
+        {
+            // Remove from end (most recent additions usually at end)
+            int index = _followers.Count - 1;
+            var sheep = _followers[index];
+            _followers.RemoveAt(index);
+            dropped.Add(sheep);
+            
+            // Notify sheep they left
+            if (sheep != null) sheep.LeaveLeader(); 
+        }
+        return dropped;
+    }
+
     public void TriggerDash(Vector3 direction)
     {
         foreach (var sheep in _followers)

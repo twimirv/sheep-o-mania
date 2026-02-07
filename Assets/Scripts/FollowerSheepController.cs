@@ -443,7 +443,16 @@ public class FollowerSheepController : MonoBehaviour
 
             Vector3 nextPos = centerPoint + new Vector3(Mathf.Cos(currentAngleRad) * currentDist, 0, Mathf.Sin(currentAngleRad) * currentDist);
             
-            nextPos.y = startPos.y; // Maintain height
+            // Raycast down to align with terrain
+            // Start slightly up to avoid starting in ground, cast down distinct distance
+            if (Physics.Raycast(new Vector3(nextPos.x, startPos.y + 2.0f, nextPos.z), Vector3.down, out RaycastHit hit, 10.0f))
+            {
+                 nextPos.y = hit.point.y;
+            }
+            else
+            {
+                 nextPos.y = startPos.y; // Fallback to start height if no ground found
+            }
 
             Vector3 diff = nextPos - transform.position;
             _characterController.Move(diff);

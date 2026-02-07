@@ -38,6 +38,7 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
     private Vector3 _startPosition;
     
     private List<FollowerSheepController> _myHerd = new List<FollowerSheepController>();
+    public int HerdCount => _myHerd.Count;
     private float _nextRecruitTime;
     private bool _isConcussed = false;
     private float _concussionRecoveryTime;
@@ -166,21 +167,55 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
                 _characterController.Move(Vector3.down * gravity * Time.deltaTime);
             }
             
-            // Check for Shield Collision
+            // Check for Shield Collision OR Player Collision
             // We do a small overlap check in front
             Collider[] hits = Physics.OverlapSphere(transform.position + transform.forward * 1.0f, 1.0f);
             foreach (var hit in hits)
             {
                 var sheep = hit.GetComponent<FollowerSheepController>();
+                // Shield Check
                 if (sheep != null && sheep.GetLeader() != null && sheep.GetLeader().IsPlayer && sheep.IsShielding)
                 {
                     // Hit a shielding sheep! Stop!
                     _isDashing = false;
-                    
-                    // Bounce back slightly?
                     _characterController.Move(-transform.forward * 2.0f);
-                    
                     yield break; // Exit dash routine
+                }
+
+                // Alpha Player Collision Check
+                var alpha = hit.GetComponent<AlphaSheepController>();
+                if (alpha != null)
+                {
+                    // Hit the Player!
+                    // Call Concuss on Player to trigger effects and get dropped sheep
+                    var dropped = alpha.Concuss();
+                        
+                    // 2. Steal up to 3
+                    int stolenCount = 0;
+                    int maxSteal = 3;
+                    
+                    foreach (var victim in dropped)
+                    {
+                        if (victim == null) continue;
+
+                        if (stolenCount < maxSteal)
+                        {
+                            victim.JoinLeader(this);
+                            stolenCount++;
+                        }
+                        else
+                        {
+                            // 3. Despawn the rest with smoke
+                            StartCoroutine(DespawnWithSmoke(victim));
+                        }
+                    }
+
+                    // Apply knockback to alpha? (Optional, maybe for feel)
+                    // alpha.ApplyKnockback(transform.forward * 10f);
+
+                    _isDashing = false;
+                    _characterController.Move(-transform.forward * 2.0f); // Bounce back
+                    yield break;
                 }
             }
 
@@ -188,6 +223,21 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         }
         
         _isDashing = false;
+    }
+
+    private System.Collections.IEnumerator DespawnWithSmoke(FollowerSheepController sheep)
+    {
+        // Play Smoke Function
+        if (concussionParticles != null) // Reuse if suitable, otherwise instantiate new
+        {
+             // Instantiate a copy at position
+             var smoke = Instantiate(concussionParticles, sheep.transform.position, Quaternion.identity);
+             smoke.Play();
+             Destroy(smoke.gameObject, 2.0f);
+        }
+        
+        Destroy(sheep.gameObject);
+        yield return null;
     }
 
     private void HandleConcussion()
