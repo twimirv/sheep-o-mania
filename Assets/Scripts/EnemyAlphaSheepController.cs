@@ -15,13 +15,21 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
     public float recruitmentInterval = 1.0f;
 
     [Header("Concussion")]
-    public float concussionDuration = 3.0f;
-    public float tackleThreshold = 10.0f; // Force required to stun
+    public float concussionDuration = 5.0f;
+    public float tackleThreshold = 10.0f; 
+    public ParticleSystem concussionParticles; 
+    public float blinkInterval = 0.2f;
+
+    [Header("Aggression")]
+    public float dashAttackDistance = 8.0f;
+    public float dashAttackCooldown = 3.0f;
+    public float dashSpeed = 15.0f;
+    public float dashDuration = 0.5f;
 
     // ISheepLeader Implementation
     public Vector3 Velocity => _velocity;
     public bool IsPlayer => false;
-    public float LastJumpTime => -100f; // Enemies don't jump yet
+    public float LastJumpTime => -100f; 
 
     private CharacterController _characterController;
     private Vector3 _velocity;
@@ -33,13 +41,27 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
     private float _nextRecruitTime;
     private bool _isConcussed = false;
     private float _concussionRecoveryTime;
+    
+    private Renderer _renderer;
+    private Color _originalColor;
+    private bool _blinkState;
+    private float _nextBlinkTime;
+
+    private float _nextDashAttackTime;
+    private bool _isDashing = false;
 
     private void Start()
     {
-        var renderer = GetComponentInChildren<Renderer>();
-        if (renderer != null)
+        _renderer = GetComponentInChildren<Renderer>();
+        if (_renderer != null)
         {
-            renderer.material.color = Color.red;
+            _originalColor = Color.red; 
+            _renderer.material.color = _originalColor;
+        }
+
+        if (concussionParticles != null)
+        {
+            concussionParticles.Stop();
         }
     }
 
@@ -52,6 +74,8 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
 
     private void Update()
     {
+        if (_isDashing) return; // Dash handled in Coroutine
+
         if (_isConcussed)
         {
             HandleConcussion();
@@ -60,11 +84,12 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         {
             HandleRoaming();
             HandleRecruitment();
+            HandleAggression();
         }
         
         ApplyGravity();
     }
-
+    
     private void HandleRoaming()
     {
         if (Time.time > _roamTargetTime)
@@ -97,24 +122,99 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
             // If sheep exists and has NO leader, recruit it
             if (sheep != null && sheep.GetLeader() == null) 
             {
-                 // We need FollowerSheepController to expose a public method to Join a leader
-                 // For now, let's assume we can call something or set it logic
-                 // Since FollowerSheepController.CheckForAlpha is internal logic, we might need to expose "JoinLeader(ISheepLeader)"
-                 
-                 // Implementation in Follower will follow
                  sheep.JoinLeader(this);
             }
         }
     }
-    
+
+    private void HandleAggression()
+    {
+        if (Time.time < _nextDashAttackTime) return;
+
+        // Check distance to player
+        // Note: In a real game, caching the player reference is better, but finding one is okay if only one player.
+        var player = FindObjectOfType<AlphaSheepController>();
+        if (player != null)
+        {
+            float dist = Vector3.Distance(transform.position, player.transform.position);
+            if (dist < dashAttackDistance)
+            {
+                StartCoroutine(DashAttack(player.transform.position));
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator DashAttack(Vector3 targetPos)
+    {
+        _isDashing = true;
+        _nextDashAttackTime = Time.time + dashAttackCooldown;
+        
+        Vector3 dashDir = (targetPos - transform.position).normalized;
+        dashDir.y = 0; // Flat dash
+
+        float elapsed = 0f;
+        while (elapsed < dashDuration)
+        {
+            // Move
+            _characterController.Move(dashDir * dashSpeed * Time.deltaTime);
+            transform.forward = dashDir;
+            elapsed += Time.deltaTime;
+            
+            // Gravity during dash
+            if (!_characterController.isGrounded)
+            {
+                _characterController.Move(Vector3.down * gravity * Time.deltaTime);
+            }
+            
+            // Check for Shield Collision
+            // We do a small overlap check in front
+            Collider[] hits = Physics.OverlapSphere(transform.position + transform.forward * 1.0f, 1.0f);
+            foreach (var hit in hits)
+            {
+                var sheep = hit.GetComponent<FollowerSheepController>();
+                if (sheep != null && sheep.GetLeader() != null && sheep.GetLeader().IsPlayer && sheep.IsShielding)
+                {
+                    // Hit a shielding sheep! Stop!
+                    _isDashing = false;
+                    
+                    // Bounce back slightly?
+                    _characterController.Move(-transform.forward * 2.0f);
+                    
+                    yield break; // Exit dash routine
+                }
+            }
+
+            yield return null;
+        }
+        
+        _isDashing = false;
+    }
+
     private void HandleConcussion()
     {
         if (Time.time > _concussionRecoveryTime)
         {
-            _isConcussed = false;
-            // Recovered
+            EndConcussion();
+            return;
         }
-        // Maybe spin stars or shake?
+
+        // Blinking Effect
+        if (Time.time > _nextBlinkTime)
+        {
+            _blinkState = !_blinkState;
+            if (_renderer != null)
+            {
+                _renderer.enabled = _blinkState; // Simple blink by toggling renderer
+            }
+            _nextBlinkTime = Time.time + blinkInterval;
+        }
+    }
+
+    private void EndConcussion()
+    {
+        _isConcussed = false;
+        if (_renderer != null) _renderer.enabled = true;
+        if (concussionParticles != null) concussionParticles.Stop();
     }
 
     private void ApplyGravity()
@@ -134,7 +234,7 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         _roamTarget = _startPosition + new Vector3(randomCircle.x, 0, randomCircle.y);
         _roamTargetTime = Time.time + Random.Range(3.0f, 8.0f);
     }
-    
+
     // Public Interaction
     public void ApplyForce(Vector3 force)
     {
@@ -151,11 +251,14 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         _isConcussed = true;
         _concussionRecoveryTime = Time.time + concussionDuration;
         
+        if (concussionParticles != null) concussionParticles.Play();
+        
         // Drop Herd
         DropHerd();
         
         Debug.Log("Enemy Alpha Concussed! Dropped Herd.");
     }
+
 
     private void DropHerd()
     {
@@ -164,7 +267,15 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         {
             if (_myHerd[i] != null)
             {
-                _myHerd[i].LeaveLeader();
+                FollowerSheepController follower = _myHerd[i];
+                follower.LeaveLeader(); // This unregisters logic
+                
+                // Force Flee: Set a roam target away from me
+                Vector3 fleeDir = (follower.transform.position - transform.position).normalized;
+                if (fleeDir == Vector3.zero) fleeDir = Random.insideUnitSphere;
+                fleeDir.y = 0;
+                
+                follower.RoamTo(follower.transform.position + fleeDir * 15.0f);
             }
         }
         _myHerd.Clear();

@@ -36,6 +36,7 @@ public class FollowerSheepController : MonoBehaviour
     private float _lastJumpTime = -1f;
 
     public ISheepLeader GetLeader() => _leader;
+    public bool IsShielding => _state == State.Shielding;
 
     private void Start()
     {
@@ -150,6 +151,16 @@ public class FollowerSheepController : MonoBehaviour
         
         _timeDelay = orderIndex * 0.15f; 
         
+        // Ignore Collision with Leader
+        if (_leader is MonoBehaviour leaderMono)
+        {
+            var leaderCollider = leaderMono.GetComponent<Collider>();
+            if (leaderCollider != null)
+            {
+                Physics.IgnoreCollision(_characterController, leaderCollider, true);
+            }
+        }
+        
         // Only Register with HerdManager if it's the Player
         if (_leader.IsPlayer && HerdManager.Instance != null)
         {
@@ -163,6 +174,16 @@ public class FollowerSheepController : MonoBehaviour
     {
          if (_leader != null)
          {
+             // Restore Collision with Leader
+             if (_leader is MonoBehaviour leaderMono)
+             {
+                 var leaderCollider = leaderMono.GetComponent<Collider>();
+                 if (leaderCollider != null)
+                 {
+                     Physics.IgnoreCollision(_characterController, leaderCollider, false);
+                 }
+             }
+
              if (_leader.IsPlayer && HerdManager.Instance != null)
              {
                  HerdManager.Instance.UnregisterFollower(this);
@@ -264,6 +285,12 @@ public class FollowerSheepController : MonoBehaviour
 
         // Damp external slide velocity
         _externalSlideVelocity = Vector3.Lerp(_externalSlideVelocity, Vector3.zero, 5f * Time.deltaTime);
+    }
+
+    public void RoamTo(Vector3 target)
+    {
+        _roamTarget = target;
+        _roamTargetTime = Time.time + 3.0f; // Force move here for a bit
     }
 
     private void PickNewRoamTarget()
