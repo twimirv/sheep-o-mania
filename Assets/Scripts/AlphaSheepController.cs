@@ -4,8 +4,16 @@ using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInput))]
-public class AlphaSheepController : MonoBehaviour
+public class AlphaSheepController : MonoBehaviour, ISheepLeader
 {
+    // ISheepLeader Implementation
+    public Vector3 Velocity => _velocity;
+    public bool IsPlayer => true;
+    // LastJumpTime is already public property in this class
+    public void UnregisterFollower(FollowerSheepController follower) { 
+        if(HerdManager.Instance != null) HerdManager.Instance.UnregisterFollower(follower);
+        _followerCount--; 
+    }
     [Header("Movement Settings")]
     public float moveSpeed = 6.0f;
     public float rotationSpeed = 720.0f;
@@ -169,7 +177,7 @@ public class AlphaSheepController : MonoBehaviour
         _characterController.Move(_velocity * Time.deltaTime);
     }
 
-    public int RegisterFollower()
+    public int RegisterFollower(FollowerSheepController follower)
     {
         _followerCount++;
         return _followerCount;

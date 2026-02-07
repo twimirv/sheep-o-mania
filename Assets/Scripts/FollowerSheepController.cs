@@ -22,7 +22,7 @@ public class FollowerSheepController : MonoBehaviour
     private Vector3 _externalSlideVelocity;
     
     private State _state = State.Roaming;
-    private AlphaSheepController _alphaSheep;
+    private ISheepLeader _leader;
     private float _timeDelay = 0f;
     private float _nextDashTime = 0f;
     private float _nextQuickTurnTime = 0f;
@@ -34,6 +34,8 @@ public class FollowerSheepController : MonoBehaviour
     private CharacterController _characterController;
     private Vector3 _velocity;
     private float _lastJumpTime = -1f;
+
+    public ISheepLeader GetLeader() => _leader;
 
     private void Start()
     {
@@ -52,9 +54,9 @@ public class FollowerSheepController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (HerdManager.Instance != null)
+        if (_leader != null)
         {
-            HerdManager.Instance.UnregisterFollower(this);
+            _leader.UnregisterFollower(this);
         }
     }
 
@@ -65,7 +67,7 @@ public class FollowerSheepController : MonoBehaviour
         if (_state == State.Roaming)
         {
             HandleRoaming();
-            CheckForAlpha();
+            CheckForLeader();
         }
         else if (_state == State.Following)
         {
@@ -83,6 +85,16 @@ public class FollowerSheepController : MonoBehaviour
     {
         // Check if we hit another sheep (Follower or Alpha)
         // And if we are somewhat "on top" of it (hit normal pointing up)
+        
+        if (_state == State.Dashing)
+        {
+            var enemyAlpha = hit.collider.GetComponent<EnemyAlphaSheepController>();
+            if (enemyAlpha != null)
+            {
+                enemyAlpha.ApplyForce(transform.forward * 20.0f); // Arbitrary strong force
+            }
+        }
+
         if (hit.normal.y > 0.5f)
         {
             bool isSheep = hit.collider.GetComponent<FollowerSheepController>() != null || hit.collider.GetComponent<AlphaSheepController>() != null;
@@ -111,35 +123,55 @@ public class FollowerSheepController : MonoBehaviour
         }
     }
 
-    private void CheckForAlpha()
+    private void CheckForLeader()
     {
-        if (_alphaSheep == null)
+        // Detect Player Alpha
+        if (_leader == null)
         {
-            _alphaSheep = FindObjectOfType<AlphaSheepController>();
-        }
-
-        if (_alphaSheep != null)
-        {
-            float dist = Vector3.Distance(transform.position, _alphaSheep.transform.position);
-            if (dist <= HerdManager.Instance.joinDistance)
+            var alpha = FindObjectOfType<AlphaSheepController>();
+            if (alpha != null)
             {
-                JoinHerd();
+                float dist = Vector3.Distance(transform.position, alpha.transform.position);
+                if (dist <= HerdManager.Instance.joinDistance)
+                {
+                    JoinLeader(alpha);
+                }
             }
         }
     }
 
-    private void JoinHerd()
+    public void JoinLeader(ISheepLeader newLeader)
     {
+        if (_leader != null) return;
+
+        _leader = newLeader;
         _state = State.Following;
-        int orderIndex = _alphaSheep.RegisterFollower();
-        _timeDelay = orderIndex * 0.15f; // Random small delay for jumps
+        int orderIndex = _leader.RegisterFollower(this);
         
-        if (HerdManager.Instance != null)
+        _timeDelay = orderIndex * 0.15f; 
+        
+        // Only Register with HerdManager if it's the Player
+        if (_leader.IsPlayer && HerdManager.Instance != null)
         {
             HerdManager.Instance.RegisterFollower(this);
         }
         
-        Debug.Log($"Sheep joined herd (Flocking Mode) at index {orderIndex}");
+        Debug.Log($"Sheep joined leader {newLeader}");
+    }
+    
+    public void LeaveLeader()
+    {
+         if (_leader != null)
+         {
+             if (_leader.IsPlayer && HerdManager.Instance != null)
+             {
+                 HerdManager.Instance.UnregisterFollower(this);
+             }
+             _leader.UnregisterFollower(this);
+             _leader = null;
+         }
+         _state = State.Roaming;
+         PickNewRoamTarget();
     }
 
     // --- Following State Logic ---
@@ -147,10 +179,10 @@ public class FollowerSheepController : MonoBehaviour
     // or through HerdManager events for registered followers only.
     private void HandleFollowing()
     {
-        if (_alphaSheep == null) return;
+        if (_leader == null) return;
 
         // 1. Calculate Target Direction & Speed
-        Vector3 targetPosition = _alphaSheep.transform.position;
+        Vector3 targetPosition = _leader.transform.position;
         Vector3 directionToAlpha = targetPosition - transform.position;
         directionToAlpha.y = 0; // Ignore height
         
@@ -191,7 +223,7 @@ public class FollowerSheepController : MonoBehaviour
         }
 
         // 6. Jump Copying
-        if (_alphaSheep.LastJumpTime > _lastJumpTime && Time.time >= _alphaSheep.LastJumpTime + _timeDelay)
+        if (_leader.LastJumpTime > _lastJumpTime && Time.time >= _leader.LastJumpTime + _timeDelay)
         {
              if (_characterController.isGrounded)
              {
@@ -256,9 +288,9 @@ public class FollowerSheepController : MonoBehaviour
         bool collisionIgnored = false;
         Collider alphaCollider = null;
 
-        if (_alphaSheep != null)
+        if (_leader != null && _leader is MonoBehaviour alphaMono)
         {
-            alphaCollider = _alphaSheep.GetComponent<Collider>();
+            alphaCollider = alphaMono.GetComponent<Collider>();
             if (alphaCollider != null)
             {
                 Physics.IgnoreCollision(_characterController, alphaCollider, true);

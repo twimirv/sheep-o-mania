@@ -8,12 +8,18 @@ public class SheepWiggle : MonoBehaviour
     public float scaleSpeed = 3.0f;
     public float scaleAmount = 0.05f;
 
+    public float stillWiggleMultiplier = 0.9f; // 90% when still
+    public float movementThreshold = 0.1f;
+
     private Quaternion _initialRotation;
     private Vector3 _initialScale;
     private float _randomOffset;
+    private CharacterController _characterController;
 
     private void Start()
     {
+        _characterController = GetComponent<CharacterController>();
+        
         // Cache initial local values
         // Note: For rotation, we might want to wiggle relative to current rotation if moving?
         // Actually, if we modify transform.localRotation, it might fight with CharacterController rotation logic if applied to the root.
@@ -30,6 +36,17 @@ public class SheepWiggle : MonoBehaviour
 
     private void Update()
     {
+        // Check movement
+        float currentWiggleAmount = wiggleAmount;
+        if (_characterController != null)
+        {
+             // Use velocity sqrMagnitude for efficiency
+             if (_characterController.velocity.sqrMagnitude < (movementThreshold * movementThreshold))
+             {
+                 currentWiggleAmount *= stillWiggleMultiplier;
+             }
+        }
+
         // 1. Scale "Breathing" (Pulse)
         // Helps them look alive even when standing still
         float scaleFactor = 1.0f + Mathf.Sin((Time.time + _randomOffset) * scaleSpeed) * scaleAmount;
@@ -46,7 +63,7 @@ public class SheepWiggle : MonoBehaviour
             
             // Wiggle Rotation (Z-axis sway)
             // We use localRotation so it sways relative to which way the sheep is facing
-            float sway = Mathf.Sin((Time.time + _randomOffset) * wiggleSpeed) * wiggleAmount;
+            float sway = Mathf.Sin((Time.time + _randomOffset) * wiggleSpeed) * currentWiggleAmount;
             // Maintain the 90 degree Y offset we set in setup!
             visual.localRotation = Quaternion.Euler(0, 90f, sway); 
              
