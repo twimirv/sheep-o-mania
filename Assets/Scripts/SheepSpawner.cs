@@ -51,7 +51,7 @@ public class SheepSpawner : MonoBehaviour
         }
 
         // Find Player
-        var player = FindObjectOfType<AlphaSheepController>();
+        var player = FindFirstObjectByType<AlphaSheepController>();
         if (player != null) 
         {
             _playerTransform = player.transform;

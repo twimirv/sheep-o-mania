@@ -247,6 +247,7 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
     // --- Concussion Logic ---
     [Header("Concussion Settings")]
     public float concussionDuration = 2.0f;
+    public float knockbackDuration = 0.5f; // Added adjustable duration
     public ParticleSystem concussionParticles;
     public float blinkInterval = 0.2f;
 
@@ -311,5 +312,28 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         }
 
         return new System.Collections.Generic.List<FollowerSheepController>();
+    }
+
+    public void ApplyKnockback(Vector3 force)
+    {
+        StartCoroutine(KnockbackRoutine(force));
+    }
+
+    private System.Collections.IEnumerator KnockbackRoutine(Vector3 force)
+    {
+        _canMove = false;
+        float duration = knockbackDuration;
+        float elapsed = 0f;
+        
+        while (elapsed < duration)
+        {
+            _characterController.Move(force * Time.deltaTime * (1f - (elapsed / duration))); // Decaying force
+            elapsed += Time.deltaTime;
+            // Also apply gravity
+             _characterController.Move(Vector3.down * gravity * Time.deltaTime);
+            yield return null;
+        }
+
+        _canMove = true;
     }
 }

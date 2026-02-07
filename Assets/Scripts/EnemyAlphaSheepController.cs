@@ -25,6 +25,7 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
     public float dashAttackCooldown = 3.0f;
     public float dashSpeed = 15.0f;
     public float dashDuration = 0.5f;
+    public float dashKnockbackForce = 20.0f; // Adjustable force
 
     // ISheepLeader Implementation
     public Vector3 Velocity => _velocity;
@@ -134,7 +135,7 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
 
         // Check distance to player
         // Note: In a real game, caching the player reference is better, but finding one is okay if only one player.
-        var player = FindObjectOfType<AlphaSheepController>();
+        var player = FindFirstObjectByType<AlphaSheepController>();
         if (player != null)
         {
             float dist = Vector3.Distance(transform.position, player.transform.position);
@@ -169,16 +170,15 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
             
             // Check for Shield Collision OR Player Collision
             // We do a small overlap check in front
-            Collider[] hits = Physics.OverlapSphere(transform.position + transform.forward * 1.0f, 1.0f);
+            Collider[] hits = Physics.OverlapSphere(transform.position + transform.forward * 0.6f, 0.4f);
             foreach (var hit in hits)
             {
                 var sheep = hit.GetComponent<FollowerSheepController>();
                 // Shield Check
                 if (sheep != null && sheep.GetLeader() != null && sheep.GetLeader().IsPlayer && sheep.IsShielding)
                 {
-                    // Hit a shielding sheep! Stop!
-                    _isDashing = false;
-                    _characterController.Move(-transform.forward * 2.0f);
+                    // Hit a shielding sheep! Smooth Recoil!
+                    yield return StartCoroutine(RecoilRoutine(transform.forward));
                     yield break; // Exit dash routine
                 }
 
@@ -187,7 +187,7 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
                 if (alpha != null)
                 {
                     // Hit the Player!
-                    // Call Concuss on Player to trigger effects and get dropped sheep
+                    alpha.ApplyKnockback(transform.forward * dashKnockbackForce);
                     var dropped = alpha.Concuss();
                         
                     // 2. Steal up to 3
@@ -210,11 +210,8 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
                         }
                     }
 
-                    // Apply knockback to alpha? (Optional, maybe for feel)
-                    // alpha.ApplyKnockback(transform.forward * 10f);
-
-                    _isDashing = false;
-                    _characterController.Move(-transform.forward * 2.0f); // Bounce back
+                    // Smooth Recoil!
+                    yield return StartCoroutine(RecoilRoutine(transform.forward));
                     yield break;
                 }
             }
@@ -222,6 +219,29 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
             yield return null;
         }
         
+        _isDashing = false;
+    }
+
+    private System.Collections.IEnumerator RecoilRoutine(Vector3 hitDirection)
+    {
+        float recoilDuration = 0.3f;
+        float recoilDistance = 2.0f;
+        float elapsed = 0f;
+        Vector3 startPos = transform.position;
+        Vector3 recoilDir = -hitDirection.normalized;
+
+        while (elapsed < recoilDuration)
+        {
+            float t = elapsed / recoilDuration;
+            // Ease out
+            t = t * (2f - t); 
+            
+            float step = (recoilDistance / recoilDuration) * Time.deltaTime * (1f - t); // Diminishing speed
+            _characterController.Move(recoilDir * step);
+            
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
         _isDashing = false;
     }
 

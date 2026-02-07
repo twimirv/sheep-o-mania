@@ -11,8 +11,8 @@ public class GameManager : MonoBehaviour
     [Tooltip("Time limit in minutes")]
     public float timeLimitMinutes = 5f;
 
-    [Header("UI References (Optional for now)")]
-    // public TMPro.TextMeshProUGUI timerText; 
+    [Header("UI References")]
+    public TMPro.TextMeshProUGUI timerText; 
 
     private float _timeRemaining;
     private bool _isGameOver = false;
@@ -32,6 +32,69 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         _timeRemaining = timeLimitMinutes * 60f;
+        SetupTimerBackground();
+    }
+
+    private void SetupTimerBackground()
+    {
+        if (timerText == null) return;
+
+        // Check if background already exists
+        Transform existingBg = timerText.transform.parent.Find("TimerBackground");
+        if (existingBg != null) return;
+
+        // Create Background Object
+        GameObject bgObj = new GameObject("TimerBackground");
+        bgObj.transform.SetParent(timerText.transform.parent, false);
+        bgObj.transform.SetSiblingIndex(timerText.transform.GetSiblingIndex()); // Render behind text
+
+        // Setup RectTransform to match Text
+        RectTransform textRect = timerText.GetComponent<RectTransform>();
+        RectTransform bgRect = bgObj.AddComponent<RectTransform>();
+        
+        // Copy anchors and position
+        bgRect.anchorMin = textRect.anchorMin;
+        bgRect.anchorMax = textRect.anchorMax;
+        bgRect.pivot = textRect.pivot;
+        bgRect.anchoredPosition = textRect.anchoredPosition;
+        bgRect.sizeDelta = textRect.sizeDelta + new Vector2(10, 10); // Add Padding
+
+        // Add Image
+        UnityEngine.UI.Image img = bgObj.AddComponent<UnityEngine.UI.Image>();
+        img.color = new Color(0, 0, 0, 0.8f); // Black with slight transparency
+        img.sprite = GenerateRoundedSprite();
+        img.type = UnityEngine.UI.Image.Type.Sliced; // Enable slicing for corners
+
+        // Ensure text is centered
+        timerText.alignment = TMPro.TextAlignmentOptions.Center;
+    }
+
+    private Sprite GenerateRoundedSprite()
+    {
+        int width = 64;
+        int height = 64;
+        int radius = 8; // Reduced from 16
+        Texture2D tex = new Texture2D(width, height);
+        Color[] colors = new Color[width * height];
+        Color c = Color.white;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                // Check corners
+                if (x < radius && y < radius && Vector2.Distance(new Vector2(x, y), new Vector2(radius, radius)) > radius) colors[y * width + x] = Color.clear; // BL
+                else if (x < radius && y >= height - radius && Vector2.Distance(new Vector2(x, y), new Vector2(radius, height - radius - 1)) > radius) colors[y * width + x] = Color.clear; // TL
+                else if (x >= width - radius && y < radius && Vector2.Distance(new Vector2(x, y), new Vector2(width - radius - 1, radius)) > radius) colors[y * width + x] = Color.clear; // BR
+                else if (x >= width - radius && y >= height - radius && Vector2.Distance(new Vector2(x, y), new Vector2(width - radius - 1, height - radius - 1)) > radius) colors[y * width + x] = Color.clear; // TR
+                else colors[y * width + x] = c;
+            }
+        }
+        tex.SetPixels(colors);
+        tex.Apply();
+        
+        // Create Sprite with borders for slicing
+        return Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(radius, radius, radius, radius));
     }
 
     private void Update()
@@ -45,6 +108,12 @@ public class GameManager : MonoBehaviour
             {
                 _timeRemaining = 0;
                 EndGame();
+            }
+            
+            // Update UI
+            if (timerText != null)
+            {
+                timerText.text = GetFormattedTime();
             }
         }
     }
@@ -68,7 +137,7 @@ public class GameManager : MonoBehaviour
         GameOverStats.Reset();
 
         // Player Stats
-        var player = FindObjectOfType<AlphaSheepController>();
+        var player = FindFirstObjectByType<AlphaSheepController>();
         if (player != null)
         {
             GameOverStats.PlayerHerdCount = player.FollowerCount;
@@ -80,7 +149,7 @@ public class GameManager : MonoBehaviour
         }
 
         // Enemy Stats
-        var enemies = FindObjectsOfType<EnemyAlphaSheepController>();
+        var enemies = FindObjectsByType<EnemyAlphaSheepController>(FindObjectsSortMode.None);
         
         // Sort enemies by herd size (Descending)
         // We need to add a public property to EnemyAlphaSheepController to get herd size
