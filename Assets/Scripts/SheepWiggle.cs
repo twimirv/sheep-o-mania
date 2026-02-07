@@ -40,17 +40,18 @@ public class SheepWiggle : MonoBehaviour
         // Let's try applying this to the visual child transform if possible.
         // If this script is on the root, we need to find the child.
         
-        Transform visual = transform.GetChild(0); // Assuming first child is the model
-        if (visual != null)
+        if (transform.childCount > 0)
         {
-             // Wiggle Rotation (Z-axis sway)
-             // We use localRotation so it sways relative to which way the sheep is facing
-             float sway = Mathf.Sin((Time.time + _randomOffset) * wiggleSpeed) * wiggleAmount;
-             // Maintain the 90 degree Y offset we set in setup!
-             visual.localRotation = Quaternion.Euler(0, 90f, sway); 
+            Transform visual = transform.GetChild(0); // Assuming first child is the model
+            
+            // Wiggle Rotation (Z-axis sway)
+            // We use localRotation so it sways relative to which way the sheep is facing
+            float sway = Mathf.Sin((Time.time + _randomOffset) * wiggleSpeed) * wiggleAmount;
+            // Maintain the 90 degree Y offset we set in setup!
+            visual.localRotation = Quaternion.Euler(0, 90f, sway); 
              
-             // Breathing
-             visual.localScale = new Vector3(3f, 3f * scaleFactor, 3f);
+            // Breathing
+            visual.localScale = new Vector3(3f, 3f * scaleFactor, 3f);
         }
     }
 }

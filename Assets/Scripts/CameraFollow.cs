@@ -9,13 +9,28 @@ public class CameraFollow : MonoBehaviour
     [Header("Camera Settings")]
     [Tooltip("Offset from the target")]
     public Vector3 offset = new Vector3(0, 10, -10);
-    [Tooltip("How smoothly the camera catches up to the target")]
-    public float smoothSpeed = 0.125f;
+    [Tooltip("Approximate time to reach the target")]
+    public float smoothTime = 0.125f;
 
     [Header("Zoom Settings")]
     public float zoomSpeed = 0.5f; 
     public float minZoom = 5.0f; 
     public float maxZoom = 40.0f;
+    [Tooltip("Current Zoom Distance")]
+    public float currentZoom = 10.0f;
+
+    [Header("Isometric Settings")]
+    public bool enableIsometric = true;
+    public float pitch = 45f;
+    public float yaw = 45f;
+
+    private Vector3 _currentVelocity;
+
+    private void Start()
+    {
+        // Don't overwrite currentZoom with offset.magnitude
+        // This ensures the camera starts at the configured currentZoom distance
+    }
 
     private void LateUpdate()
     {
@@ -34,18 +49,32 @@ public class CameraFollow : MonoBehaviour
                 // Scroll up (positive) = zoom in (decrease distance)
                 // Scroll down (negative) = zoom out (increase distance)
                 float zoomChange = -scroll * zoomSpeed * 0.01f; 
-                
-                float currentDist = offset.magnitude;
-                float targetDist = Mathf.Clamp(currentDist + zoomChange, minZoom, maxZoom);
-                
-                offset = offset.normalized * targetDist;
+                currentZoom += zoomChange;
             }
+        }
+        
+        // Clamp and apply zoom
+        currentZoom = Mathf.Clamp(currentZoom, minZoom, maxZoom);
+
+        if (enableIsometric)
+        {
+            Quaternion isoRotation = Quaternion.Euler(pitch, yaw, 0);
+            Vector3 isoDirection = isoRotation * Vector3.back;
+            offset = isoDirection * currentZoom;
+            
+            transform.rotation = isoRotation;
+        }
+        else
+        {
+            offset = offset.normalized * currentZoom;
         }
 
         Vector3 desiredPosition = target.position + offset;
-        Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
-        transform.position = smoothedPosition;
+        transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref _currentVelocity, smoothTime);
 
-        transform.LookAt(target);
+        if (!enableIsometric)
+        {
+            transform.LookAt(target);
+        }
     }
 }
