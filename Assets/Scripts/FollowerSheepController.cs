@@ -141,6 +141,9 @@ public class FollowerSheepController : MonoBehaviour
         }
     }
 
+    [Header("Visual Effects")]
+    public ParticleSystem joinParticles;
+
     public void JoinLeader(ISheepLeader newLeader)
     {
         if (_leader != null) return;
@@ -165,6 +168,13 @@ public class FollowerSheepController : MonoBehaviour
         if (_leader.IsPlayer && HerdManager.Instance != null)
         {
             HerdManager.Instance.RegisterFollower(this);
+            
+            // Play Effects
+            if (joinParticles != null) 
+            {
+                joinParticles.Play();
+            }
+            HerdManager.Instance.PlayJoinSound();
         }
         
         Debug.Log($"Sheep joined leader {newLeader}");

@@ -22,6 +22,10 @@ public class HerdManager : MonoBehaviour
     [Header("Smoothness Controller")]
     public float movementSmoothTime = 0.1f; // Defaulted to faster response
 
+    [Header("Audio")]
+    public AudioClip[] joinSounds;
+    private AudioSource _audioSource;
+
     private System.Collections.Generic.List<FollowerSheepController> _followers = new System.Collections.Generic.List<FollowerSheepController>();
 
     private void Awake()
@@ -33,6 +37,16 @@ public class HerdManager : MonoBehaviour
         else
         {
             Instance = this;
+            _audioSource = gameObject.AddComponent<AudioSource>();
+        }
+    }
+
+    public void PlayJoinSound()
+    {
+        if (joinSounds != null && joinSounds.Length > 0 && _audioSource != null)
+        {
+            AudioClip clip = joinSounds[Random.Range(0, joinSounds.Length)];
+            _audioSource.PlayOneShot(clip);
         }
     }
 

@@ -18,8 +18,11 @@ public class SheepSpawner : MonoBehaviour
     [Tooltip("Maximum number of followers per enemy")]
     public int maxHerdSize = 10; 
 
+    [Tooltip("Number of free sheep to spawn at start")]
+    public int initialFreeSheepCount = 20;
+
     [Tooltip("Time in seconds between spawning random herd sheep")]
-    public float randomSpawnInterval = 5.0f;
+    public float randomSpawnInterval = 1.0f; // Reduced from 5.0f
     
     [Tooltip("Maximum distance from the player to spawn sheep")]
     public float maxSpawnDistance = 100f;
@@ -57,7 +60,18 @@ public class SheepSpawner : MonoBehaviour
         }
 
         SpawnEnemies();
+        SpawnInitialFreeSheep(); // Spawn initial batch
         StartCoroutine(SpawnRandomSheepRoutine());
+    }
+
+    private void SpawnInitialFreeSheep()
+    {
+        if (herdSheepPrefab == null) return;
+        
+        for (int i = 0; i < initialFreeSheepCount; i++)
+        {
+            SpawnRandomSheep();
+        }
     }
 
     private void SpawnEnemies()
@@ -122,13 +136,17 @@ public class SheepSpawner : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(randomSpawnInterval);
+            SpawnRandomSheep();
+        }
+    }
 
-            Vector3 spawnPos = GetRandomPositionOnTerrain();
-            if (spawnPos != Vector3.zero)
-            {
-                GameObject sheepObj = Instantiate(herdSheepPrefab, spawnPos, Quaternion.identity);
-                sheepObj.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
-            }
+    private void SpawnRandomSheep()
+    {
+        Vector3 spawnPos = GetRandomPositionOnTerrain();
+        if (spawnPos != Vector3.zero)
+        {
+            GameObject sheepObj = Instantiate(herdSheepPrefab, spawnPos, Quaternion.identity);
+            sheepObj.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
         }
     }
 

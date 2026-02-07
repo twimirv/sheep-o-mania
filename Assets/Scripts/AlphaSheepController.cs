@@ -143,7 +143,8 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
             finalMoveSpeed *= shieldSpeedMultiplier;
         }
 
-        float targetSpeed = (move.magnitude * finalMoveSpeed);
+        // Constant movement: Target speed is always finalMoveSpeed, ignoring input magnitude
+        float targetSpeed = finalMoveSpeed;
         _currentSpeed = Mathf.SmoothDamp(_currentSpeed, targetSpeed, ref _speedSmoothVelocity, speedSmoothTime);
 
         if (move.magnitude >= 0.1f)
@@ -154,11 +155,9 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         }
         
         Vector3 moveDir = Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * Vector3.forward;
-        // Only move if we have significant speed to avoid micro-movements when stopping
-        if (_currentSpeed > 0.01f)
-        {
-            _characterController.Move(moveDir.normalized * _currentSpeed * Time.deltaTime);
-        }
+        
+        // Move constantly
+        _characterController.Move(moveDir.normalized * _currentSpeed * Time.deltaTime);
         
         // ... gravity ...
 

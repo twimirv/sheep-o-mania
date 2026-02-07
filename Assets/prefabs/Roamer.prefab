@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 8901147476017068327}
   - component: {fileID: 8595365575354663219}
   - component: {fileID: 1960302261940609861}
-  - component: {fileID: 6223864298355782459}
   m_Layer: 0
   m_Name: Roamer
   m_TagString: Untagged
@@ -72,24 +71,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01983ffe81e4e40cebbc6e07142a0e8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FollowerSheepController
---- !u!114 &6223864298355782459
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 3484181067369493222, guid: 8d5a0fd9c5f239449a2fe698fab03939, type: 3}
-  m_PrefabInstance: {fileID: 5345673400719564626}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4757384368880823533}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1caaa326a706e48aa9d8d13afc1d8c36, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SheepWiggle
-  wiggleSpeed: 42
-  wiggleAmount: 4.47
-  scaleSpeed: 3
-  scaleAmount: 0.09
-  stillWiggleMultiplier: 1
-  movementThreshold: 0.1
+  joinParticles: {fileID: 0}
 --- !u!1 &5111247422532215299
 GameObject:
   m_ObjectHideFlags: 0
@@ -232,7 +214,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: Roamer
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 0}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
