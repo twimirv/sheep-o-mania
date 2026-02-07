@@ -139,7 +139,13 @@ public class EnemyAlphaSheepController : MonoBehaviour, ISheepLeader
         if (player != null)
         {
             float dist = Vector3.Distance(transform.position, player.transform.position);
-            if (dist < dashAttackDistance)
+            
+            // Limit aggression based on Herd Size
+            // 0 sheep = 0 distance, 10 sheep = 100% distance
+            float aggressionFactor = Mathf.Clamp01(HerdCount / 10f);
+            float effectiveDistance = dashAttackDistance * aggressionFactor;
+
+            if (dist < effectiveDistance)
             {
                 StartCoroutine(DashAttack(player.transform.position));
             }

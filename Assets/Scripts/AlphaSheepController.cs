@@ -85,14 +85,15 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         _characterController.stepOffset = 0.1f; 
 
         _moveAction = _playerInput.actions["Move"];
-        _jumpAction = _playerInput.actions["Jump"];
-        // We repurposed Crouch (Actions[4] usually, or by name)
-        // Interact now maps to B/E, used for Shield
+        _moveAction = _playerInput.actions["Move"];
+        // Alpha Speed Boost: Left Shift (Assuming Sprint is bound to Shift)
+        _jumpAction = _playerInput.actions["Sprint"]; 
+        // Shield: Mouse Right (We will add Mouse Right to Interact)
         _shieldAction = _playerInput.actions["Interact"]; 
-        // Quick Turn moved to Attack (X / Left Click)
+        // Quick Turn: Mouse Left (Assuming Attack is bound to Left Click & West Button)
         _quickTurnAction = _playerInput.actions["Attack"]; 
-        // Dash remains on Crouch (now Y / Q)
-        _dashAction = _playerInput.actions["Crouch"];
+        // Herd Dash: Space (Assuming Jump is bound to Space & South Button)
+        _dashAction = _playerInput.actions["Jump"];
         
         // Ensure particles stay in world space
         if (runningFlames != null)
@@ -113,6 +114,7 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         if (_canMove)
         {
             HandleMovement();
+            UpdateCheckHitbox(); // Extended Hitbox Check
         }
     }
 
@@ -284,6 +286,38 @@ public class AlphaSheepController : MonoBehaviour, ISheepLeader
         _isConcussed = false;
         if (_renderer != null) _renderer.enabled = true;
         if (concussionParticles != null) concussionParticles.Stop();
+    }
+
+    private void UpdateCheckHitbox()
+    {
+        // Check for enemies with expanded hitbox while boosting
+        if (_isBoosting)
+        {
+            float checkRadius = 0.75f; // 50% larger than typical 0.5f radius
+            Collider[] hits = Physics.OverlapSphere(transform.position, checkRadius);
+            foreach (var hit in hits)
+            {
+                var enemyAlpha = hit.GetComponent<EnemyAlphaSheepController>();
+                if (enemyAlpha != null)
+                {
+                    enemyAlpha.ApplyForce(transform.forward * 20.0f);
+                }
+            }
+        }
+    }
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        // Check if we hit an enemy while boosting (dashing) - Physical Collision Backup
+        if (_isBoosting)
+        {
+            var enemyAlpha = hit.collider.GetComponent<EnemyAlphaSheepController>();
+            if (enemyAlpha != null)
+            {
+                // Apply strong force (e.g. 20) to concuss enemy
+                enemyAlpha.ApplyForce(transform.forward * 20.0f);
+            }
+        }
     }
 
     public System.Collections.Generic.List<FollowerSheepController> Concuss()

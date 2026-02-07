@@ -13,9 +13,11 @@ public class GameManager : MonoBehaviour
 
     [Header("UI References")]
     public TMPro.TextMeshProUGUI timerText; 
+    public TMPro.TextMeshProUGUI sheepCounterText;
 
     private float _timeRemaining;
     private bool _isGameOver = false;
+    private AlphaSheepController _player;
 
     private void Awake()
     {
@@ -32,24 +34,27 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         _timeRemaining = timeLimitMinutes * 60f;
-        SetupTimerBackground();
+        SetupTextBackground(timerText);
+        SetupTextBackground(sheepCounterText);
+        
+        _player = FindFirstObjectByType<AlphaSheepController>();
     }
 
-    private void SetupTimerBackground()
+    private void SetupTextBackground(TMPro.TextMeshProUGUI textComp)
     {
-        if (timerText == null) return;
+        if (textComp == null) return;
 
         // Check if background already exists
-        Transform existingBg = timerText.transform.parent.Find("TimerBackground");
+        Transform existingBg = textComp.transform.parent.Find("TimerBackground");
         if (existingBg != null) return;
 
         // Create Background Object
         GameObject bgObj = new GameObject("TimerBackground");
-        bgObj.transform.SetParent(timerText.transform.parent, false);
-        bgObj.transform.SetSiblingIndex(timerText.transform.GetSiblingIndex()); // Render behind text
+        bgObj.transform.SetParent(textComp.transform.parent, false);
+        bgObj.transform.SetSiblingIndex(textComp.transform.GetSiblingIndex()); // Render behind text
 
         // Setup RectTransform to match Text
-        RectTransform textRect = timerText.GetComponent<RectTransform>();
+        RectTransform textRect = textComp.GetComponent<RectTransform>();
         RectTransform bgRect = bgObj.AddComponent<RectTransform>();
         
         // Copy anchors and position
@@ -66,7 +71,7 @@ public class GameManager : MonoBehaviour
         img.type = UnityEngine.UI.Image.Type.Sliced; // Enable slicing for corners
 
         // Ensure text is centered
-        timerText.alignment = TMPro.TextAlignmentOptions.Center;
+        textComp.alignment = TMPro.TextAlignmentOptions.Center;
     }
 
     private Sprite GenerateRoundedSprite()
@@ -110,10 +115,21 @@ public class GameManager : MonoBehaviour
                 EndGame();
             }
             
-            // Update UI
+            // Update Timer UI
             if (timerText != null)
             {
                 timerText.text = GetFormattedTime();
+            }
+            
+            // Update Sheep Counter UI
+            if (sheepCounterText != null && _player != null)
+            {
+                sheepCounterText.text = $"Sheep: {_player.FollowerCount}";
+            }
+            else if (sheepCounterText != null && _player == null)
+            {
+                // Try finding player again if null
+                _player = FindFirstObjectByType<AlphaSheepController>();
             }
         }
     }

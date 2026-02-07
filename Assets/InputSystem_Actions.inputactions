@@ -442,6 +442,17 @@
                 },
                 {
                     "name": "",
+                    "id": "7856d3fe-12b6-4ca9-b4e2-f4b964f6b5d9",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "b3f66d0b-7751-423f-908b-a11c5bd95930",
                     "path": "<Gamepad>/buttonEast",
                     "interactions": "",
