@@ -87,7 +87,7 @@ public class FollowerSheepController : MonoBehaviour
         // Check if we hit another sheep (Follower or Alpha)
         // And if we are somewhat "on top" of it (hit normal pointing up)
         
-        if (_state == State.Dashing)
+        if (_state == State.Dashing || _state == State.QuickTurning)
         {
             var enemyAlpha = hit.collider.GetComponent<EnemyAlphaSheepController>();
             if (enemyAlpha != null)
